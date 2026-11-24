@@ -35,7 +35,7 @@ Outputs: `found` (`true`/`false`), `notes` (section body), `version` (cleaned he
 
 Matching headings: `## 1.2.3`, `## v1.2.3`, `## [1.2.3]`, `## [1.2.3] - 2026-11-24`, `## 1.2.3 (2026-11-24)` and date headings such as `## 2026-11-24`. The section runs to the next `## ` heading.
 
-## Recommended convention: releases are audit evidence
+## Audit trail
 
 - **Every changelog bullet references a PR or commit**, so each line can be traced to the change behind it:
 
@@ -48,7 +48,7 @@ Matching headings: `## 1.2.3`, `## v1.2.3`, `## [1.2.3]`, `## [1.2.3] - 2026-11-
   - Retry once on HTTP 429 (3f9a1c2)
   ```
 
-  Enforce it with `require-reference: 'true'` on the changelog action.
+  Enforce it with `require-reference: true` on the changelog action (recommended).
 - **The release body is the changelog section, verbatim.** Create the release from the action's `notes` output and re-read the body afterwards to prove it.
 - **Version tags are immutable.** Refuse to publish if the `vX.Y.Z` tag or release already exists; only the major alias (`v1`) moves. This repository's `release` workflow does all three and is a working reference.
 
@@ -64,7 +64,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: cl
         uses: DamianFlynn/teams-release-notify/changelog@v1
         with:
@@ -105,7 +105,7 @@ jobs:
   announce:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: cl
         uses: DamianFlynn/teams-release-notify/changelog@v1
         with:
