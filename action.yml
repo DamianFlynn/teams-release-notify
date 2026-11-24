@@ -1,0 +1,67 @@
+name: Teams release notify
+description: Announce a release or content change in a Microsoft Teams channel through a Workflows webhook.
+author: Damian Flynn
+branding:
+  icon: bell
+  color: blue
+inputs:
+  webhook-url:
+    description: Teams Workflows webhook URL. Empty skips the notification.
+    required: false
+    default: ''
+  heading:
+    description: Card title.
+    required: true
+  subtitle:
+    description: Subtle line under the heading.
+    required: false
+    default: ''
+  facts:
+    description: 'Multiline, one "Label | value" per line, shown as a fact table.'
+    required: false
+    default: ''
+  notes:
+    description: Markdown body of the card.
+    required: false
+    default: ''
+  changelog-path:
+    description: Changelog to read the notes from when notes is empty (needs changelog-version).
+    required: false
+    default: ''
+  changelog-version:
+    description: Version (or date) section to read from changelog-path.
+    required: false
+    default: ''
+  links:
+    description: 'Multiline, one "Label | URL" per line, shown as buttons (max 6).'
+    required: false
+    default: ''
+  max-notes-length:
+    description: Notes longer than this are cut and get a "see the release" note.
+    required: false
+    default: '3000'
+  fail-on-error:
+    description: Fail the step when sending fails. Default only warns.
+    required: false
+    default: 'false'
+outputs:
+  result:
+    description: sent, skipped or failed.
+    value: ${{ steps.notify.outputs.result }}
+runs:
+  using: composite
+  steps:
+    - id: notify
+      shell: bash
+      env:
+        TRN_WEBHOOK_URL: ${{ inputs.webhook-url }}
+        TRN_HEADING: ${{ inputs.heading }}
+        TRN_SUBTITLE: ${{ inputs.subtitle }}
+        TRN_FACTS: ${{ inputs.facts }}
+        TRN_NOTES: ${{ inputs.notes }}
+        TRN_CHANGELOG_PATH: ${{ inputs.changelog-path }}
+        TRN_CHANGELOG_VERSION: ${{ inputs.changelog-version }}
+        TRN_LINKS: ${{ inputs.links }}
+        TRN_MAX_NOTES: ${{ inputs.max-notes-length }}
+        TRN_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: bash "${{ github.action_path }}/scripts/notify.sh"

@@ -1,0 +1,35 @@
+name: Changelog section
+description: Extract one version's section from a CHANGELOG file.
+author: Damian Flynn
+inputs:
+  path:
+    description: Path to the changelog file.
+    required: false
+    default: CHANGELOG.md
+  version:
+    description: Version (or date) heading to extract, with or without a leading v. Use "latest" for the first section.
+    required: true
+  required:
+    description: Fail when the section is missing or empty.
+    required: false
+    default: 'true'
+outputs:
+  found:
+    description: "'true' when a non-empty section was found, otherwise 'false'."
+    value: ${{ steps.extract.outputs.found }}
+  notes:
+    description: The section body (Markdown).
+    value: ${{ steps.extract.outputs.notes }}
+  version:
+    description: The cleaned heading of the section found (useful with version=latest).
+    value: ${{ steps.extract.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - id: extract
+      shell: bash
+      env:
+        CL_PATH: ${{ inputs.path }}
+        CL_VERSION: ${{ inputs.version }}
+        CL_REQUIRED: ${{ inputs.required }}
+      run: bash "${{ github.action_path }}/../scripts/changelog-action.sh"

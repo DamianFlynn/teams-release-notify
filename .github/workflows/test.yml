@@ -1,0 +1,40 @@
+name: test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: shellcheck
+        run: shellcheck -S warning scripts/*.sh tests/run.sh
+      - name: tests
+        run: bash tests/run.sh
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Post a live test card
+        id: notify
+        uses: ./
+        with:
+          webhook-url: ${{ secrets.TEAMS_RELEASES_WEBHOOK }}
+          heading: 'TEST: teams-release-notify ${{ github.sha }}'
+          subtitle: Automated check of the action itself, safe to ignore.
+          facts: |
+            Commit | ${{ github.sha }}
+            Run | ${{ github.run_id }}
+          notes: Posted by the **live** job of the test workflow.
+          links: |
+            Run | ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Assert sent
+        env:
+          RESULT: ${{ steps.notify.outputs.result }}
+        run: |
+          echo "result=$RESULT"
+          [ "$RESULT" = sent ]

@@ -1,0 +1,58 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v1.0.1 (needs a matching CHANGELOG.md section)
+        required: true
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Validate tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1
+          fi
+      - name: Read changelog section
+        id: cl
+        uses: ./changelog
+        with:
+          version: ${{ inputs.tag }}
+      - name: Create release and move the major tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          NOTES: ${{ steps.cl.outputs.notes }}
+        run: |
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes "$NOTES"
+          major="${TAG%%.*}"
+          git tag -f "$major" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$major"
+      - name: Announce
+        id: notify
+        uses: ./
+        with:
+          webhook-url: ${{ secrets.TEAMS_RELEASES_WEBHOOK }}
+          heading: teams-release-notify ${{ inputs.tag }}
+          subtitle: New release
+          facts: |
+            Version | ${{ inputs.tag }}
+            Commit | ${{ github.sha }}
+            Released by | ${{ github.actor }}
+          notes: ${{ steps.cl.outputs.notes }}
+          links: |
+            View release | ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.tag }}
+      - name: Assert sent
+        env:
+          RESULT: ${{ steps.notify.outputs.result }}
+        run: |
+          echo "result=$RESULT"
+          [ "$RESULT" = sent ]
