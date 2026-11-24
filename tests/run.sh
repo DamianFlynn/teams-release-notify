@@ -207,5 +207,29 @@ grep -q '^found=false$' "$tmp/gh" && ok "optional missing found=false" || bad "o
 : > "$tmp/gh"; act "$tmp/l.md" latest true >/dev/null
 grep -q '^version=3.1.0$' "$tmp/gh" && ok "action latest version output" || bad "action latest version output"
 
+# ---- require-reference
+refact() { env -i PATH="$PATH" GITHUB_OUTPUT="$tmp/gh" CL_PATH="$1" CL_VERSION="$2" CL_REQUIRED=true CL_REQUIRE_REFERENCE=true bash "$root/scripts/changelog-action.sh" 2>&1; }
+mk r1 "## 1.0.0
+
+### Fixed
+
+- Fixed a thing (#12)
+- Another thing, see abc1234
+* Star bullet ([d3adbee](https://x.io/c/d3adbee))
+  - nested bullet in #7.
+
+Plain paragraph without reference is ignored."
+: > "$tmp/gh"; refact "$tmp/r1.md" 1.0.0 >/dev/null; eq "references satisfied" "$?" 0
+mk r2 "## 1.0.0
+
+- Has ref (#1)
+- No reference here
+- Decade effaced words are not shas"
+: > "$tmp/gh"; out="$(refact "$tmp/r2.md" 1.0.0)"; rc=$?
+eq "missing reference fails" "$rc" 1
+case "$out" in *'No reference here'*'Decade effaced'*) ok "offending bullets listed" ;; *) bad "offending bullets listed" "$out" ;; esac
+case "$out" in *'Has ref'*) bad "referenced bullet not listed" ;; *) ok "referenced bullet not listed" ;; esac
+: > "$tmp/gh"; act "$tmp/r2.md" 1.0.0 true >/dev/null; eq "off by default" "$?" 0
+
 echo; echo "$pass passed, $failn failed"
 [ "$failn" -eq 0 ]

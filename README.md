@@ -29,10 +29,28 @@ Output `result`: `sent`, `skipped` or `failed`.
 | `path` | `CHANGELOG.md` | Changelog file. |
 | `version` | (required) | Version or date. A leading `v` is ignored. `latest` returns the first section that is not `Unreleased`. |
 | `required` | `true` | Fail when the section is missing or empty. |
+| `require-reference` | `false` | Fail when a bullet in the section has no PR reference (`#123`) or commit SHA (7 to 40 hex characters, at least one digit). The offending bullets are listed in the error. |
 
 Outputs: `found` (`true`/`false`), `notes` (section body), `version` (cleaned heading, handy with `latest`).
 
 Matching headings: `## 1.2.3`, `## v1.2.3`, `## [1.2.3]`, `## [1.2.3] - 2026-11-24`, `## 1.2.3 (2026-11-24)` and date headings such as `## 2026-11-24`. The section runs to the next `## ` heading.
+
+## Recommended convention: releases are audit evidence
+
+- **Every changelog bullet references a PR or commit**, so each line can be traced to the change behind it:
+
+  ```markdown
+  ## 1.2.0
+
+  ### Added
+
+  - Support for custom card colours (#42)
+  - Retry once on HTTP 429 (3f9a1c2)
+  ```
+
+  Enforce it with `require-reference: 'true'` on the changelog action.
+- **The release body is the changelog section, verbatim.** Create the release from the action's `notes` output and re-read the body afterwards to prove it.
+- **Version tags are immutable.** Refuse to publish if the `vX.Y.Z` tag or release already exists; only the major alias (`v1`) moves. This repository's `release` workflow does all three and is a working reference.
 
 ## Example: release workflow
 
@@ -51,11 +69,16 @@ jobs:
         uses: DamianFlynn/teams-release-notify/changelog@v1
         with:
           version: ${{ github.ref_name }}
-      - run: gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+          require-reference: 'true'   # every bullet cites a PR (#123) or commit SHA
+      - name: Create the release from the changelog section and verify it
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           NOTES: ${{ steps.cl.outputs.notes }}
+        run: |
+          gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+          body="$(gh release view "$TAG" --json body -q .body | tr -d '\r')"
+          [[ "$body" == *"$NOTES"* ]] || { echo "::error::Release body differs from the changelog"; exit 1; }
       - uses: DamianFlynn/teams-release-notify@v1
         with:
           webhook-url: ${{ secrets.TEAMS_RELEASES_WEBHOOK }}
@@ -71,7 +94,7 @@ jobs:
 
 ## Example: announce content changes on merge to main
 
-The changelog uses date headings (`## 2026-11-24`); the card carries that day's section.
+The changelog uses date headings (`## 2026-11-24`) and each bullet cites its PR, e.g. `- Added the VPN runbook (#31)`; the card carries that day's section.
 
 ```yaml
 on:
@@ -105,6 +128,6 @@ shellcheck -S warning scripts/*.sh tests/run.sh
 bash tests/run.sh
 ```
 
-`TRN_DRY_RUN=1` makes `scripts/notify.sh` print the payload instead of sending it. Releases: add a `## x.y.z` section to `CHANGELOG.md`, then run the `release` workflow with the tag.
+`TRN_DRY_RUN=1` makes `scripts/notify.sh` print the payload instead of sending it. Releases: add a `## x.y.z` section to `CHANGELOG.md` (every bullet with a PR or commit reference), then run the `release` workflow with the tag.
 
 MIT licensed.

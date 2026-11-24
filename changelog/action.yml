@@ -13,6 +13,10 @@ inputs:
     description: Fail when the section is missing or empty.
     required: false
     default: 'true'
+  require-reference:
+    description: Fail when a bullet in the section has no PR reference (#123) or commit SHA (7+ hex characters).
+    required: false
+    default: 'false'
 outputs:
   found:
     description: "'true' when a non-empty section was found, otherwise 'false'."
@@ -32,4 +36,5 @@ runs:
         CL_PATH: ${{ inputs.path }}
         CL_VERSION: ${{ inputs.version }}
         CL_REQUIRED: ${{ inputs.required }}
+        CL_REQUIRE_REFERENCE: ${{ inputs.require-reference }}
       run: bash "${{ github.action_path }}/../scripts/changelog-action.sh"
